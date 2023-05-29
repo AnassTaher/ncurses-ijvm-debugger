@@ -26,19 +26,27 @@ GUI_LIBS=`cat gui_libs.txt`
 DEPS = $(wildcard $(IDIR)/*.h)
 SRCS = $(wildcard $(SRCDIR)/*.c)
 _OBJ = $(patsubst $(SRCDIR)/%,$(ODIR)/%,$(SRCS:.c=.o))
-OBJ = $(filter-out $(ODIR)/main.o $(ODIR)/debugger.o $(ODIR)/gui.o,$(_OBJ))
+OBJ = $(filter-out $(ODIR)/main.o $(ODIR)/debugger.o $(ODIR)/gui.o $(ODIR)/tui.o,$(_OBJ))
+
+CXX = clang++
+CURSES_LIBS=-lncurses
+override CPPFLAGS+=-I$(IDIR) -g -Wall -Wpedantic $(USERFLAGS) -std=c++11 -Wformat-extra-args -fPIE -Wno-deprecated
+TUI_FLAG+=
 
 DEPS2 := $(OBJ:.o=.d)
 
 all: ijvm
 
-$(OBJ) $(ODIR)/main.o $(ODIR)/debugger.o $(ODIR)/gui.o: $(DEPS)
+$(OBJ) $(ODIR)/main.o $(ODIR)/debugger.o $(ODIR)/gui.o $(ODIR)/tui.o: $(DEPS)
 
 -include $(DEPS2)
 
 $(ODIR)/%.o: $(SRCDIR)/%.c
 	+@[ -d $(ODIR) ] || mkdir -p $(ODIR)
-	$(CC) -MMD $(CFLAGS) -c -o $@ $<
+	$(CXX) -MMD $(CPPFLAGS) -c -o $@ $<
+
+$(ODIR)/tui.o: ncurses/tui.cpp $(DEPS)
+	$(CXX) -c -o $@ $< $(CPPFLAGS)
 
 ijvm: $(OBJ) $(ODIR)/main.o
 	echo $(SRCS)
@@ -51,6 +59,10 @@ debugger: $(OBJ) $(ODIR)/debugger.o
 gui: $(OBJ) $(ODIR)/gui.o
 	echo $(SRCS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS) $(GUI_LIBS)
+
+tui: $(OBJ) $(ODIR)/tui.o
+	$(CXX) -o $@ $^ $(CPPFLAGS) $(LIBS) $(CURSES_LIBS)
+
 
 
 

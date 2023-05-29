@@ -168,4 +168,30 @@ byte_t get_instruction(void);
 // Checks if reference is a freed heap cell
 // bool is_heap_freed(word_t reference);
 
+/**
+ * @return The index at the top of the stack
+ **/
+unsigned int get_stack_top(void);
+
+/**
+ * @return The index at the bottom of the stack(default 0)
+ **/
+unsigned int get_stack_bottom(void);
+
+/**
+ * @return The current stack of the ijvm.
+ **/
+int32_t* get_stack(void);
+
+/**
+ * @return The index at the top of the frame
+ **/
+unsigned int get_frame_top(void);
+
+/**
+ * @return The index at the bottom of the frame
+ **/
+unsigned int get_frame_bottom(void);
+
+
 #endif

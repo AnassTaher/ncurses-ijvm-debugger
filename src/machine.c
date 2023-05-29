@@ -25,7 +25,7 @@ int init_ijvm(char *binary_path)
   in = stdin;
   out = stdout;
   // TODO: implement me
-  return -1;
+  return 0;
 }
 
 void destroy_ijvm(void) 
@@ -110,3 +110,23 @@ byte_t get_instruction(void)
    // TODO: implement me
 // return 0;
 //}
+
+unsigned int get_stack_top(void){
+  return 0;
+}
+
+unsigned int get_stack_bottom(){
+  return 257;
+}
+
+int32_t* get_stack(void){
+  return 0;
+}
+
+unsigned int get_frame_top(void){
+  return 0;
+}
+
+unsigned int get_frame_bottom(void){
+  return 0;
+}

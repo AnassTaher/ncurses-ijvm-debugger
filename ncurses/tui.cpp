@@ -1,131 +1,187 @@
-#include <iostream>
-#include <ncurses.h>
-#include <sys/ioctl.h> //ioctl() and TIOCGWINSZ
-#include <unistd.h> // for STDOUT_FILENO
-#include <string>
-#include <cctype>
-#include <map>
-#include "../include/ijvm.h"
 
-
-
+#include "printing.h"
+#include "setup.h"
+#include "common.h"
 // WINDOW * win = newwin(nlines, ncols, y0, x0);
-WINDOW* program_data;
-WINDOW* instruction_data;
-WINDOW* stack_data;
-WINDOW* frame_data;
-WINDOW* misc_data;
+extern WINDOW* prog_win;
+extern WINDOW* ins_win;
+extern WINDOW* stack_win;
+extern WINDOW* frame_data;
+extern WINDOW* misc_win;
+extern WINDOW* input_win;
+
+extern WINDOW* program_box;
+extern WINDOW* stack_box;
+extern WINDOW* frame_box;
+extern WINDOW* input_box;
+extern WINDOW* instruction_box;
+extern WINDOW* misc_box;
+
 
 int MAX_LINES;
 int MAX_COLS;
-int p_l;
-int p_c;
-int i_l;
-int i_c;
+extern int reg_box_l;
+extern int reg_box_c;
+extern int instruct_l;
+extern int instruct_c;
 
-void setup();
-void setInstructions();
+int curr_breakpoint = 0;
 
-struct Instruction{
-    int args;
-    std::string name;
-};
+char* file_path;
+int step_count = 0;
 
-std::map<int,Instruction> lookup_instruction;
+std::string last_instruct = "";
 
-void printMisc(){
-    werase(misc_data);
+std::set<int> breakpoints;
+std::map<int,Instruction> lookup;
+
+std::string get_string(WINDOW* win){
+    std::string input;
+
+    werase(win);
+    wmove(input_win, 0, 0);
+    nocbreak();
+    int ch = wgetch(win);
+
+    while ( ch != '\n' ){
+        input.push_back( ch );
+        ch = wgetch(win);
+    }
+
+    // restore your cbreak / echo settings here
+    cbreak();
+    return input;
+}
+
+void printMenu(){
+
+    clear();
+    int margin = MAX_LINES * 0.25;
+    int padding = MAX_COLS * 0.25;
+
     
-    wprintw(misc_data, "TOS: 0x%.2X (%d)\n", tos(), tos());
-    wprintw(misc_data, "PC: %d\n", get_program_counter());
-    wprintw(misc_data, "SP: %d\n", get_stack_top());
-    wprintw(misc_data, "FP: %d\n", get_frame_top());
-    wrefresh(misc_data);
-}
+    WINDOW* menu_box = newwin(MAX_LINES * 0.5, MAX_COLS * 0.5, margin, padding);
+    WINDOW* instruct_menu = newwin(MAX_LINES * 0.5 - 4, MAX_COLS * 0.5 - 4, margin + 2, padding + 2);
+    refresh();
+    box(menu_box, 0, 0);
+    wrefresh(menu_box);
 
-void printInstructions(){
+    wprintw(instruct_menu, "Welcome to the IJVM Debugger!\n\n");
+    // print a horizontal row
+    whline(instruct_menu, '-', MAX_COLS * 0.5 - 4);
+    // show all the commmands:
+    wprintw(instruct_menu, "Commands\n");
+    wprintw(instruct_menu, "\tb <address> : set breakpoint at address\n");
+    wprintw(instruct_menu, "\td <address> : delete breakpoint at address\n");
+    wprintw(instruct_menu, "\tn <steps>   : step n steps\n");
+    wprintw(instruct_menu, "\tp <steps>   : step back n steps\n");
+    wprintw(instruct_menu, "\tr           : run until breakpoint or halt\n");
+    wprintw(instruct_menu, "\tq           : quit\n\n");
+    // note that the steps are optional, the terminal also might bug out if the terminal is too zoomed in
+    wprintw(instruct_menu, "Note: \n\n");
+    wprintw(instruct_menu, " - This program requires you to implement all the functions in machine.c\n");
+    wprintw(instruct_menu, " - The steps are optional, if no steps are given, the debugger will step once.\n");
+    wprintw(instruct_menu, " - If you press enter, the last instruction will be executed.\n");
+    wprintw(instruct_menu, " - If the terminal is too zoomed in, the debugger might not work properly.\n\n");
+    wprintw(instruct_menu, "Press any key to continue...\n");
+    wrefresh(instruct_menu);
 
-    werase(instruction_data);
-    uint8_t* text = get_text();
-    unsigned int text_size = get_text_size(); 
 
-    for(int i = 0; i < text_size; i++){
-        uint8_t instruction = text[i];
-        Instruction ins = lookup_instruction[instruction];
-        if(i == get_program_counter()) wattron(instruction_data, COLOR_PAIR(1));
-        wprintw(instruction_data, "0x%.2X %s ", instruction, ins.name.c_str());
-
-        if(ins.args >= 1){
-            uint8_t arg1 = text[++i];
-            wprintw(instruction_data, "0x%.2X(%d) ", arg1, arg1);
-        }
-        if(ins.args >= 2){
-            uint8_t arg2 = text[++i];
-            wprintw(instruction_data, "0x%.2X(%d) ", arg2, arg2);
-        }
-        wprintw(instruction_data, "\n");
-        wattroff(instruction_data, COLOR_PAIR(1));
-    }
-    wrefresh(instruction_data);
-
-}
-
-void printFrame(){
-
-    werase(frame_data);
-    unsigned int frame_top = get_frame_top();
-    unsigned int frame_bottom = get_frame_bottom();
+    getch();
     
-    int chars = 0;
-    for(int i = frame_bottom; i < frame_top; i++){
-        wprintw(frame_data, "%02X ", get_local_variable(i));
-        chars += 3;
-        if(p_c - chars < 8){
-            wprintw(frame_data, "\n");
-            chars = 0;
-        }
-    }
-    wrefresh(frame_data);
-
+    delwin(instruct_menu);
+    delwin(menu_box);
+    clear();
 }
 
-void printStack(){
+void combinedInstruct(std::string input){
+    try{
+        char command = input[0];
+        int arg = std::stoi(input.substr(1));
+        switch(command){
+            case 'b':
+                breakpoints.insert(arg);
+                break;
+            case 'd':
+                breakpoints.erase(arg);
+                break;
+            case 'n':
+                for(int i = 0; i < arg; i++) step();
+                step_count += arg;
+                break;
+            case 'p':
+                destroy_ijvm();
+                init_ijvm(file_path);
+                for(int i = 0; i < step_count - arg; i++) step(); 
+                step_count -= arg;
+                break;
+        }
+    } catch(const std::exception& e){
+        endwin();
+        destroy_ijvm();
+        std::cerr << "Error : " << e.what() << '\n';
+        exit(1);
+    }
+}
+
+void deleteWindows(){
+
+    delwin(prog_win);
+    delwin(ins_win);
+    delwin(stack_win);
+    delwin(frame_data);
+    delwin(misc_win);
+    delwin(input_win);
+
+    delwin(program_box);
+    delwin(stack_box);
+    delwin(frame_box);
+    delwin(input_box);
+    delwin(instruction_box);
+    delwin(misc_box);
+
+    clear();
+}
+
+void singleInstruct(std::string input){
+    if(input == "n"){
+        step();
+        step_count++;
+    }
+    if(input == "p" && step_count > 0){
+        destroy_ijvm();
+        init_ijvm(file_path);
+        for(int i = 0; i < step_count - 1; i++) step();
+        step_count--;
+    }
+    if(input == "r"){
+        while(get_instruction() != OP_HALT){
+            if(breakpoints.find(get_program_counter()) != breakpoints.end()){
+                break;
+            }
+            step();
+            step_count++;
+        }
+    }
+    if(input == "h"){
+        deleteWindows();
+        printMenu();
+        setup();
+    }
+}
+
+int checkInstruct(std::string input){
+    if(input == "q" || get_instruction() == OP_HALT) return -1;
+
+    if(input.size() == 0)   input = last_instruct;
+    if(input.size() == 1)   singleInstruct(input);
+    if(input.size() >= 2)   combinedInstruct(input);
     
-    werase(stack_data);
-    int32_t* stack = get_stack();
-    unsigned int stack_top = get_stack_top();
-    unsigned int stack_bottom = get_stack_bottom();
-
-    int chars = 0;
-    for(int i = stack_bottom; i <= stack_top; i++){
-        wprintw(stack_data, "%02X ", stack[i]);
-        chars += 3;
-        if(p_c - chars < 8){
-            wprintw(stack_data, "\n");
-            chars = 0;
-        }
-    }
-    wrefresh(stack_data);
-}
-
-void printProgram(){
-
-    uint8_t* text = get_text();
-    unsigned int text_size = get_text_size();
-
-    int chars = 0;
-    for(int i = 0; i < text_size; i++){
-        wprintw(program_data, "%02X ", text[i]);
-        chars += 3;
-        if(p_c - chars < 8){
-            wprintw(program_data, "\n");
-            chars = 0;
-        }
-    }
-    wrefresh(program_data);
+    return 0;
 }
 
 int main(int argc, char** argv){
+
 
     if(argc < 2){
         std::cout << "Usage: ./ijvm <binary file>" << std::endl;
@@ -133,49 +189,36 @@ int main(int argc, char** argv){
     }
 
     if(init_ijvm(argv[1]) != 0){
-        std::cout << "Error: Could not load binary file" << std::endl;
+        std::cout << "Error: File not found" << std::endl;
         return -1;
     }
+
     
 
-    setInstructions();
-
+    file_path = argv[1];
     initscr();
-    noecho();
-    setup();
-
     start_color();
     init_pair(1, COLOR_GREEN, COLOR_BLACK);
-    printFrame();
-    printProgram();
-    printStack();
-    printInstructions();
-    printMisc();
+    init_pair(2, COLOR_RED, COLOR_BLACK);
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    MAX_LINES = w.ws_row;
+    MAX_COLS = w.ws_col;
+    printMenu();
+    setup();
+    wattron(input_win, A_STANDOUT);
 
+    while(true){
 
-    int ch = 0;
-    int step_count = 0;
-    while(ch != 'q' && get_instruction() != OP_HALT){
-        ch = getch();
-        if(ch == 'n'){
-            step();
-            printFrame();
-            printStack();
-            printMisc();
-            printInstructions();
-            step_count++;
-        }
-        if(ch == 'b'){
-            destroy_ijvm();
-            init_ijvm(argv[1]);
-            for(int i = 0; i < step_count - 1; i++) step();
-            step_count--;
-            printFrame();
-            printStack();
-            printMisc();
-            printInstructions();
-        }
+        std::string input = get_string(input_win);
+        // get minimum value in breakpoints set
+
+        int res = checkInstruct(input);
+        if(res == -1) break;
+        if(input.size() != 0) last_instruct = input;
+        printStep();
     }
+
 
     endwin();
 
@@ -183,101 +226,6 @@ int main(int argc, char** argv){
     return 0;
 }
 
-void setup(){
-    struct winsize w;
-    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-    MAX_LINES = w.ws_row;
-    MAX_COLS = w.ws_col;
 
-    int c_diff = 0.05 * MAX_COLS;
-    int r_diff = 0.05 * MAX_LINES;
-
-    // leftscreen boxes
-    p_l = MAX_LINES * 0.3;
-    p_c = MAX_COLS * 0.7;
-
-    // instructions
-    i_l = MAX_LINES * 0.7;
-    i_c = MAX_COLS * 0.25;
-
-    // misc
-    int m_l = MAX_LINES * 0.25;
-    int m_c = MAX_COLS * 0.25;
-
-    // create boxes for borders, then create windows inside boxes to avoid printing over borders
-
-    // left screen
-    WINDOW* program_box = newwin(p_l, p_c, 0, 0);
-    WINDOW* stack_box = newwin(p_l, p_c, p_l + r_diff, 0);
-    WINDOW* frame_box = newwin(p_l, p_c, 2 * p_l + 2 * r_diff, 0);
-
-    program_data = newwin(p_l - 4, p_c - 4, 2, 2);
-    stack_data = newwin(p_l - 4, p_c - 4, p_l + r_diff + 2, 2);
-    frame_data = newwin(p_l - 4, p_c - 4, 2 * p_l + 2 * r_diff + 2, 2);
-
-    // right screen
-    WINDOW* instruction_box = newwin(i_l, i_c, 0, p_c + c_diff);
-    WINDOW* misc_box = newwin(m_l, m_c, i_l + r_diff, p_c + c_diff);
-    instruction_data = newwin(i_l - 6, i_c - 6, 3, p_c + c_diff + 3);
-    misc_data = newwin(m_l - 6, m_c - 6, i_l + r_diff + 3, p_c + c_diff + 3);
-
-    // refresh to get screens
-    refresh();
-    
-    // put all borders
-    box(program_box, 0, 0);
-    box(instruction_box, 0, 0);
-    box(stack_box, 0, 0);
-    box(frame_box, 0, 0);
-    box(misc_box, 0, 0);
-
-    // print the box headers
-    mvwprintw(program_box, 0, 2, "Program");
-    mvwprintw(instruction_box, 0, 2, "Instructions");
-    mvwprintw(stack_box, 0, 2, "Stack");
-    mvwprintw(frame_box, 0, 2, "Frame");
-    mvwprintw(misc_box, 0, 2, "Misc");
-
-    
-
-    // refresh to get borders
-    wrefresh(program_box);
-    wrefresh(instruction_box);
-    wrefresh(stack_box);
-    wrefresh(frame_box);
-    wrefresh(misc_box);
-
-}
-
-
-void setInstructions(){
-
-    lookup_instruction[0x10] = {1, "BIPUSH"};
-    lookup_instruction[0x59] = {0, "DUP"};
-    lookup_instruction[0xFE] = {0, "ERR"};
-    lookup_instruction[0xA7] = {2, "GOTO"};
-    lookup_instruction[0xFF] = {0, "HALT"};
-    lookup_instruction[0x60] = {0, "IADD"};
-    lookup_instruction[0x7E] = {0, "IAND"};
-    lookup_instruction[0x99] = {2, "IFEQ"};
-    lookup_instruction[0x9B] = {2, "IFLT"};
-    lookup_instruction[0x9F] = {2, "IF_ICMPEQ"};
-    lookup_instruction[0x84] = {2, "IINC"};
-    lookup_instruction[0x15] = {1, "ILOAD"};
-    lookup_instruction[0xFC] = {0, "IN"};
-    lookup_instruction[0xB6] = {2, "INVOKEVIRTUAL"};
-    lookup_instruction[0xB0] = {0, "IOR"};
-    lookup_instruction[0xAC] = {0, "IRETURN"};
-    lookup_instruction[0x36] = {1, "ISTORE"};
-    lookup_instruction[0x64] = {0, "ISUB"};
-    lookup_instruction[0x13] = {2, "LDC_W"};
-    lookup_instruction[0x00] = {0, "NOP"};
-    lookup_instruction[0xFD] = {0, "OUT"};
-    lookup_instruction[0x57] = {0, "POP"};
-    lookup_instruction[0x5F] = {0, "SWAP"};
-
-    // still have to handle this properly
-    lookup_instruction[0xC4] = {1, "WIDE"};
-}
 
 

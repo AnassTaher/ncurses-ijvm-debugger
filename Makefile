@@ -25,7 +25,7 @@ GUI_LIBS=`cat gui_libs.txt`
 
 DEPS = $(wildcard $(IDIR)/*.h)
 SRCS = $(wildcard $(SRCDIR)/*.c)
-_OBJ = $(patsubst $(SRCDIR)/%,$(ODIR)/%,$(SRCS:.c=.o))
+_OBJ = $(patsubst $(SRCDIR)/%,$(ODIR)/%,$(SRCS:.c=.o))	
 OBJ = $(filter-out $(ODIR)/main.o $(ODIR)/debugger.o $(ODIR)/gui.o $(ODIR)/tui.o,$(_OBJ))
 
 CXX = clang++
@@ -43,7 +43,7 @@ $(OBJ) $(ODIR)/main.o $(ODIR)/debugger.o $(ODIR)/gui.o $(ODIR)/tui.o: $(DEPS)
 
 $(ODIR)/%.o: $(SRCDIR)/%.c
 	+@[ -d $(ODIR) ] || mkdir -p $(ODIR)
-	$(CXX) -MMD $(CPPFLAGS) -c -o $@ $<
+	$(CC) -MMD $(CFLAGS) -c -o $@ $<
 
 $(ODIR)/tui.o: ncurses/tui.cpp $(DEPS)
 	$(CXX) -c -o $@ $< $(CPPFLAGS)
@@ -63,14 +63,11 @@ gui: $(OBJ) $(ODIR)/gui.o
 tui: $(OBJ) $(ODIR)/tui.o
 	$(CXX) -o $@ $^ $(CPPFLAGS) $(LIBS) $(CURSES_LIBS)
 
-
-
-
 clean:
 	-rm -f $(ODIR)/*.o *~ core.* $(INCDIR)/*~
 	-rm -f $(ODIR)/*.d
 	-rm -f ijvm gui debugger tui
-	-rm -f test1 test2 test3 test4 test5 testadvanced* testbonusheap testbonustail testbonusgarbage
+	-rm -f test1 test2 test3 test4 test5 testadvanced* testbonusheap
 	-rm -f dist.zip
 	-rm -rf profdata/
 	-rm -rf obj/ *.dSYM

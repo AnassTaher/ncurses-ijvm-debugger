@@ -1,3 +1,6 @@
+# Debugger preview
+https://www.youtube.com/watch?v=0gH6FO1kZP4&feature=youtu.be
+
 # Github
 
 *Do now post solution of this assignment online!* This is considered plagiarism

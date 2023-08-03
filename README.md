@@ -18,9 +18,15 @@ Demo showcase: https://www.youtube.com/watch?v=0gH6FO1kZP4
 
 Clone down this repository 
 
- `git clone https://github.com/AnassTaher/ncurses-ijvm-debugger/`
+ `git clone https://github.com/AnassTaher/ncurses-ijvm-debugger`
 
-run `sudo apt-get install libc6-dev clang make valgrind git`  
+Clone using existing framework(optional):
+
+  `git clone https://github.com/AnassTaher/ncurses-ijvm-debugger -b framework`
+
+Install dependencies:
+  
+`sudo apt-get install libc6-dev clang make valgrind git`  
 
 Make IJVM binary:
 

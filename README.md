@@ -10,8 +10,8 @@ Demo showcase: https://www.youtube.com/watch?v=0gH6FO1kZP4
 
 ## Project Screen Shot(s)
 
-<img src="img/menu.png" width="48%">
-<img src="img/interface.png" width="48%">
+<img src="img/menu.png">
+<img src="img/interface.png">
 
 
 ## Installation and Setup Instructions

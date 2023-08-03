@@ -1,7 +1,0 @@
-.main
-    BIPUSH -10
-    BIPUSH -20
-    ISUB
-    OUT
-    HALT
-.end-main

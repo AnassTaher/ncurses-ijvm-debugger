@@ -13,7 +13,6 @@
 extern "C" {
 #endif
 
-// i have no idea how to do this, but it works :D
 #define OP_HALT 0xFF
 #define OP_INVOKEVIRTUAL 0xB6
 #define OP_WIDE 0xC4

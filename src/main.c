@@ -1,14 +1,13 @@
 #include <stdio.h>
 #include "ijvm.h"
-#include "util.h"
-void print_help(void)
-{ 
+
+void print_help(void){ 
   printf("Usage: ./ijvm binary \n"); 
 }
 
 int main(int argc, char **argv) 
 {
-  d5printf("HELLO!");
+
   if (argc < 2) 
   {
     print_help();

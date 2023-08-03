@@ -30,8 +30,7 @@ OBJ = $(filter-out $(ODIR)/main.o $(ODIR)/debugger.o $(ODIR)/gui.o $(ODIR)/tui.o
 
 CXX = clang++
 CURSES_LIBS=-lncurses
-override CPPFLAGS+=-I$(IDIR) -g -Wall -Wpedantic $(USERFLAGS) -std=c++11 -Wformat-extra-args -fPIE -Wno-deprecated
-TUI_FLAG+=
+override CPPFLAGS+=-I$(IDIR) -g -Wall -Wpedantic $(USERFLAGS) -std=c++11 -Wformat-extra-args -fPIE -Wno-deprecated -Wno-return-type-c-linkage
 
 DEPS2 := $(OBJ:.o=.d)
 

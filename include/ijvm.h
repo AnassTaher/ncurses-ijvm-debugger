@@ -1,12 +1,12 @@
 #ifndef IJVM_H
 #define IJVM_H
 
-#include <stdio.h>  /* contains type FILE * */
-#include <stdint.h>  /* contains exact integer types int32_t, uint8_t */
-#include <stdbool.h> /* contains the boolean */
+#include <stdio.h> 
+#include <stdint.h>
+#include <stdbool.h>
 
-typedef uint8_t byte_t; /* raw memory will be typed as uint8 */
-typedef int32_t word_t; /* the basic unit of the ijvm will be an int32 */
+typedef uint8_t byte_t;
+typedef int32_t word_t;
 
 #define MAGIC_NUMBER 0x1DEADFAD
 
@@ -34,27 +34,6 @@ typedef int32_t word_t; /* the basic unit of the ijvm will be an int32 */
 #define OP_POP            ((byte_t) 0x57)
 #define OP_SWAP           ((byte_t) 0x5F)
 #define OP_WIDE           ((byte_t) 0xC4)
-
-// Bonus assignment instructions
-#define OP_TAILCALL       ((byte_t) 0xCB)
-
-#define OP_NEWARRAY       ((byte_t) 0xD1)
-#define OP_IALOAD         ((byte_t) 0xD2)
-#define OP_IASTORE        ((byte_t) 0xD3)
-
-#define OP_GC             ((byte_t) 0xD4)
-
-#define OP_NETBIND        ((byte_t) 0xE1)
-#define OP_NETCONNECT     ((byte_t) 0xE2)
-#define OP_NETIN          ((byte_t) 0xE3)
-#define OP_NETOUT         ((byte_t) 0xE4)
-#define OP_NETCLOSE       ((byte_t) 0xE5)
-/**
- * DO NOT MODIFY THIS FILE.
- **/
-
-
-
 
 /**
  * Sets the input of the IJVM instance to the provided file.
@@ -151,22 +130,6 @@ word_t get_local_variable(int i);
  **/
 byte_t get_instruction(void);
 
-// Below: methods needed for bonus assignments
-
-// Only needed for Tailcall assignment: 
-//
-// Get some measure indicative of the (call)stack size
-// If you have a single continous stack this can be
-// the number of elements on the stack
-// Or it can be for example be the number of frames on the stack
-// We use this only to test stack depth when using tailcall is less
-// then when using regular calls. 
-// int get_call_stack_size(void);
-
-
-// Only needed for garbage collection assignment
-// Checks if reference is a freed heap cell
-// bool is_heap_freed(word_t reference);
 
 /**
  * @return The index at the top of the stack

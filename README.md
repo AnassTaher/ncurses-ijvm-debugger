@@ -1,8 +1,5 @@
-## Project Name & Pitch
 
-#### Example:
-
-Ncurses IJVM debugger
+## Ncurses IJVM debugger
 
 A terminal based debugger for the IJVM virtual machine. It allows you to step through the code, set breakpoints, and inspect the stack.
 
